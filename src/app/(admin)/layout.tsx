@@ -79,12 +79,15 @@ export default function AdminDashboardLayout({
 <div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/zetagrow-logo.png"
+              src="/zetagrow-logo-no-bg.png"
               alt="ZetaGrow Admin"
-              width={120}
-              height={40}
+              width={36}
+              height={36}
               className="h-9 w-auto"
             />
+            <span className="text-sm font-bold tracking-tight text-white leading-none">
+              ZetaGrow Admin
+            </span>
           </Link>
         </div>
 
@@ -214,12 +217,13 @@ export default function AdminDashboardLayout({
 <div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
               <Link href="/" className="flex items-center gap-2">
                 <Image
-                  src="/zetagrow-logo.png"
+                  src="/zetagrow-logo-no-bg.png"
                   alt="ZetaGrow Admin"
-                  width={120}
-                  height={40}
+                  width={36}
+                  height={36}
                   className="h-9 w-auto"
                 />
+                <span className="font-bold text-white text-base">ZetaGrow Admin</span>
               </Link>
               <button onClick={() => setMobileMenuOpen(false)} className="p-1 text-neutral-400">
                 <X className="w-5 h-5" />
