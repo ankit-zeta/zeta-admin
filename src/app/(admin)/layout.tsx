@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminAuth } from "@/lib/convex";
 import { 
@@ -75,20 +76,16 @@ export default function AdminDashboardLayout({
       {/* Admin Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-[#141A17] text-neutral-300 shrink-0 fixed inset-y-0 z-30 border-r border-neutral-800">
         {/* Sidebar Brand */}
-        <div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-xs">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-white leading-none">
-                ZetaGrow
-              </span>
-              <span className="text-[9px] text-brand-400 font-bold uppercase tracking-wider mt-0.5">
-                Admin Panel
-              </span>
-            </div>
-          </div>
+<div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/zetagrow-logo.png"
+              alt="ZetaGrow Admin"
+              width={120}
+              height={40}
+              className="h-9 w-auto"
+            />
+          </Link>
         </div>
 
         {/* Navigation list */}
@@ -214,8 +211,16 @@ export default function AdminDashboardLayout({
             onClick={() => setMobileMenuOpen(false)}
           ></div>
           <div className="relative w-64 bg-[#141A17] text-neutral-300 flex flex-col h-full shadow-2xl">
-            <div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
-              <span className="font-bold text-white text-base">ZetaGrow Admin</span>
+<div className="h-16 px-6 flex items-center justify-between border-b border-neutral-800">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/zetagrow-logo.png"
+                  alt="ZetaGrow Admin"
+                  width={120}
+                  height={40}
+                  className="h-9 w-auto"
+                />
+              </Link>
               <button onClick={() => setMobileMenuOpen(false)} className="p-1 text-neutral-400">
                 <X className="w-5 h-5" />
               </button>
