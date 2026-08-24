@@ -6,7 +6,7 @@ import { api } from "../../convex/_generated/api";
 
 export { api };
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || "https://terrific-dove-836.convex.cloud";
+const convexUrl = (process.env.NEXT_PUBLIC_CONVEX_URL || "https://terrific-dove-836.convex.cloud").trim();
 const convex = new ConvexReactClient(convexUrl, { skipConvexDeploymentUrlCheck: true });
 
 interface AdminAuthContextType {
