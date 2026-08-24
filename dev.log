@@ -1,0 +1,36 @@
+
+> @zetagrow/admin@1.0.0 dev
+> node scripts/dev.mjs --port=3001
+
+[dev] Starting Next.js dev server on port 3001...
+(node:15888) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.8s
+ ○ Compiling /finance ...
+ ✓ Compiled /finance in 3.6s (747 modules)
+ GET /finance 200 in 3957ms
+ ✓ Compiled in 540ms (381 modules)
+ GET /finance 200 in 61ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 686ms (749 modules)
+ ○ Compiling /affiliate ...
+ ✓ Compiled /programs in 1866ms (787 modules)
+ ○ Compiling /users ...
+ ✓ Compiled /users in 1297ms (811 modules)
+ ✓ Compiled in 2.8s (415 modules)
+ ✓ Compiled in 373ms (415 modules)
+ ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 5.2s
+ ○ Compiling /settings ...
+ ✓ Compiled /achievements in 6.4s (761 modules)
+[?25h

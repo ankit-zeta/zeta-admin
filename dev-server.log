@@ -1,0 +1,68 @@
+
+> @zetagrow/admin@1.0.0 dev:clean
+> node scripts/dev.mjs --port=3001 --clean
+
+[dev] Clearing stale .next cache...
+[dev] Starting Next.js dev server on port 3001...
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.6s
+ ○ Compiling /communications ...
+ ✓ Compiled /communications in 5.8s (758 modules)
+ GET /communications 200 in 6215ms
+ ✓ Compiled in 485ms (382 modules)
+ GET /communications 200 in 161ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1474ms (746 modules)
+ ✓ Compiled in 378ms (386 modules)
+ ○ Compiling /users ...
+ ✓ Compiled /users in 543ms (743 modules)
+ GET /users 200 in 332ms
+ ○ Compiling /work ...
+ ✓ Compiled /work in 756ms (747 modules)
+ ✓ Compiled /programs in 481ms (759 modules)
+ ○ Compiling /affiliate ...
+ ✓ Compiled /affiliate in 509ms (771 modules)
+ ○ Compiling /achievements ...
+ ✓ Compiled /achievements in 1099ms (781 modules)
+ ○ Compiling /finance ...
+ ✓ Compiled /finance in 665ms (791 modules)
+ ✓ Compiled /communications in 269ms (405 modules)
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 903ms (825 modules)
+ ✓ Compiled in 1663ms (810 modules)
+   Reload env: .env.local
+ ✓ Compiled in 6.1s (819 modules)
+ GET /users 200 in 2658ms
+ ✓ Compiled /_not-found in 467ms (799 modules)
+ GET /_next/static/chunks/app-pages-internals.js 404 in 724ms
+ GET /_next/static/chunks/main-app.js?v=1787102177944 404 in 732ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.4s (1026 modules)
+ GET /users 404 in 2675ms
+ ✓ Compiled / in 330ms (441 modules)
+ GET / 200 in 562ms
+ GET /_next/static/css/app/layout.css?v=1787102192940 404 in 92ms
+ GET /_next/static/chunks/main-app.js?v=1787102192940 404 in 113ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 112ms
+ GET /_next/static/chunks/app/(admin)/page.js 404 in 110ms
+ GET /_next/static/chunks/app/(admin)/layout.js 404 in 110ms
+ GET /_next/static/chunks/app/layout.js 404 in 70ms
+ GET / 200 in 49ms
+ GET /_next/static/css/app/layout.css?v=1787102234110 404 in 54ms
+ GET /_next/static/chunks/main-app.js?v=1787102234110 404 in 115ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 113ms
+ GET /_next/static/chunks/app/(admin)/page.js 404 in 111ms
+ GET /_next/static/chunks/app/(admin)/layout.js 404 in 111ms
+ GET /_next/static/chunks/app/layout.js 404 in 78ms
+ GET / 200 in 49ms
+ GET /_next/static/css/app/layout.css?v=1787102280789 404 in 44ms
+ GET /_next/static/chunks/app/(admin)/layout.js 404 in 91ms
+ GET /_next/static/chunks/main-app.js?v=1787102280789 404 in 89ms
+ GET /_next/static/chunks/app/(admin)/page.js 404 in 89ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 92ms
+ GET /_next/static/chunks/app/layout.js 404 in 77ms
+ ✓ Compiled in 874ms (1046 modules)
