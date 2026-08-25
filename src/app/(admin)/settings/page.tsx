@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "@/lib/convex";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/lib/convex";
-import { Settings, Save, ShieldCheck, Wallet, Briefcase, Share2, LineChart } from "lucide-react";
+import { Settings, Save, ShieldCheck, Wallet, Briefcase, Share2, LineChart, Percent } from "lucide-react";
 
 const ALL_METHODS = ["upi", "bank_transfer", "upi_qr", "paypal"];
 
@@ -59,6 +59,10 @@ const [maxFee, setMaxFee] = useState<number>(0);
   const [divPeriod, setDivPeriod] = useState("monthly");
   const [divMinBalance, setDivMinBalance] = useState<number>(1000);
 
+  // Tax (GST) — applied on top of listed program prices at checkout
+  const [gstEnabled, setGstEnabled] = useState(true);
+  const [gstRate, setGstRate] = useState<number>(18);
+
   const [msg, setMsg] = useState("");
   const [errMsg, setErrMsg] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -104,6 +108,10 @@ const [maxFee, setMaxFee] = useState<number>(0);
         setDivRate(allSettings.dividends.rate ?? 0);
         setDivPeriod(allSettings.dividends.period || "monthly");
         setDivMinBalance(allSettings.dividends.minBalance ?? 1000);
+      }
+      if (allSettings.gst) {
+        setGstEnabled(allSettings.gst.enabled !== false);
+        setGstRate(typeof allSettings.gst.rate === "number" ? allSettings.gst.rate : 18);
       }
     }
   }, [allSettings]);
@@ -194,6 +202,18 @@ const [maxFee, setMaxFee] = useState<number>(0);
           updatedAt: Date.now(),
         },
         reason: "Admin dividend configuration update",
+      });
+
+      await updateSettingMutation({
+        token,
+        key: "gst",
+        value: {
+          enabled: gstEnabled,
+          rate: Math.max(0, Math.min(28, Number(gstRate) || 0)),
+          label: "GST",
+          updatedAt: Date.now(),
+        },
+        reason: "Admin GST configuration update",
       });
 
       setMsg("Platform settings saved and recorded in audit log.");
@@ -299,6 +319,50 @@ const [maxFee, setMaxFee] = useState<number>(0);
                   <span className="font-medium">{m.replace("_", " ").toUpperCase()}</span>
                 </label>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tax (GST) */}
+        <div className="card-surface p-6 sm:p-8 space-y-4">
+          <h3 className="text-base font-bold text-textMain flex items-center gap-2">
+            <Percent className="w-4 h-4 text-brand-600" /> Tax (GST) on Program Sales
+          </h3>
+          <p className="text-[11px] text-textMuted leading-relaxed">
+            When enabled, program prices are shown excluding tax and {`GST is added at checkout`} —
+            the amount charged by Razorpay always includes it. Changes apply to new orders instantly;
+            existing paid orders are unaffected.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="font-semibold text-textMain flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={gstEnabled}
+                  onChange={(e) => setGstEnabled(e.target.checked)}
+                  className="rounded border-borderSubtle text-brand-600"
+                />
+                Charge GST on program sales
+              </label>
+              <p className="text-[10px] text-textMuted">
+                Disabled = listed price is the final payable amount (no tax line).
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-textMain">GST Rate (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={28}
+                step={0.5}
+                value={gstRate}
+                onChange={(e) => setGstRate(Number(e.target.value))}
+                disabled={!gstEnabled}
+                className="w-full px-3 py-2 rounded-lg border border-borderSubtle bg-white font-bold text-brand-700 disabled:opacity-50"
+              />
+              <p className="text-[10px] text-textMuted">
+                India standard: 18% for commercial training/coaching (SAC 999293). Split as CGST+SGST or IGST per buyer state.
+              </p>
             </div>
           </div>
         </div>
