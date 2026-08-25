@@ -32,8 +32,9 @@ export default function AdminSettingsPage() {
   const [maxWithdrawal, setMaxWithdrawal] = useState<number>(100000);
   const [dailyLimit, setDailyLimit] = useState<number>(25000);
   const [monthlyLimit, setMonthlyLimit] = useState<number>(200000);
-  const [feePercentage, setFeePercentage] = useState<number>(2);
-  const [fixedFee, setFixedFee] = useState<number>(0);
+const [feePercentage, setFeePercentage] = useState<number>(2);
+const [fixedFee, setFixedFee] = useState<number>(0);
+const [maxFee, setMaxFee] = useState<number>(0);
   const [allowedMethods, setAllowedMethods] = useState<string[]>(["upi", "bank_transfer"]);
 
   // Work earnings limits (0 = unlimited)
@@ -77,6 +78,7 @@ export default function AdminSettingsPage() {
         setMonthlyLimit(allSettings.withdrawals.monthlyLimit ?? 200000);
         setFeePercentage(allSettings.withdrawals.feePercentage ?? 2);
         setFixedFee(allSettings.withdrawals.fixedFee ?? 0);
+        setMaxFee(allSettings.withdrawals.maxFee ?? 0);
         setAllowedMethods(
           allSettings.withdrawals.allowedMethods?.length
             ? allSettings.withdrawals.allowedMethods
@@ -142,6 +144,7 @@ export default function AdminSettingsPage() {
           monthlyLimit: Number(monthlyLimit),
           feePercentage: Number(feePercentage),
           fixedFee: Number(fixedFee),
+          maxFee: Number(maxFee),
           allowedMethods,
         },
         reason: "Admin withdrawal limits & fees update",
@@ -280,6 +283,11 @@ export default function AdminSettingsPage() {
             <div className="space-y-1">
               <label className="font-semibold text-textMain">Fixed Fee (₹, per request)</label>
               <input type="number" min={0} value={fixedFee} onChange={(e) => setFixedFee(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-borderSubtle bg-white font-bold text-brand-700" />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-textMain">Max Fee Cap (₹, 0 = no cap)</label>
+              <input type="number" min={0} value={maxFee} onChange={(e) => setMaxFee(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-borderSubtle bg-white font-bold text-brand-700" />
+              <p className="text-[10px] text-textMuted">Fee = % of amount + flat, never exceeding this cap. Example: 2% capped at ₹100.</p>
             </div>
           </div>
           <div className="space-y-2">

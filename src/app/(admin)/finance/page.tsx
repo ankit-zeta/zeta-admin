@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAdminAuth } from "@/lib/convex";
 import { useQuery, useMutation } from "convex/react";
+import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex";
 import {
   Wallet,
@@ -19,9 +20,10 @@ import {
   FileBarChart,
   Users,
   IndianRupee,
+  Download,
 } from "lucide-react";
 
-type Tab = "withdrawals" | "wallets" | "report";
+type Tab = "withdrawals" | "wallets" | "tds" | "report";
 
 export default function AdminFinancePage() {
   const { token } = useAdminAuth();
@@ -196,6 +198,7 @@ export default function AdminFinancePage() {
           [
             ["withdrawals", "Withdrawals", Wallet],
             ["wallets", "Wallet Overview", Users],
+            ["tds", "TDS", IndianRupee],
             ["report", "Payout Report", FileBarChart],
           ] as [Tab, string, any][]
         ).map(([key, label, Icon]) => (
@@ -335,6 +338,9 @@ export default function AdminFinancePage() {
       )}
 
       {/* ============ TAB: WALLET OVERVIEW ============ */}
+      {/* ============ TAB: TDS ============ */}
+      {tab === "tds" && <AdminTdsTab token={token} />}
+
       {tab === "wallets" && (
         <div className="card-surface p-6 space-y-4">
           <h3 className="text-base font-bold text-textMain">Member Wallet Balances by Source</h3>
@@ -626,5 +632,269 @@ export default function AdminFinancePage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ══════════════════════════ TDS TAB ══════════════════════════
+
+type TdsSummary = {
+  fyLabel: string;
+  fyOptions: number[];
+  config: {
+    affiliate: { rate: number; threshold: number; label: string };
+    work: { rate: number; threshold: number; label: string };
+  };
+  rows: Array<{
+    userId: string;
+    userName: string;
+    userEmail: string;
+    panMasked: string;
+    affiliateGross: number;
+    affiliateTds: number;
+    workGross: number;
+    workTds: number;
+    totalGross: number;
+    totalTds: number;
+    count: number;
+  }>;
+  totals: {
+    affiliateGross: number; affiliateTds: number; workGross: number; workTds: number; totalGross: number; totalTds: number;
+  };
+};
+
+function AdminTdsTab({ token }: { token: string | null }) {
+  const [fy, setFy] = useState<number | undefined>(undefined);
+  const summary = useQuery(api.tds.getTdsSummaryAdmin, token ? { token, fyStartYear: fy } : "skip") as
+    | TdsSummary
+    | undefined;
+
+  const updateSetting = useMutation(api.settings.updateSetting);
+  const [rateAff, setRateAff] = useState<string>("");
+  const [rateWork, setRateWork] = useState<string>("");
+  const [thrAff, setThrAff] = useState<string>("");
+  const [thrWork, setThrWork] = useState<string>("");
+  const [cfgMsg, setCfgMsg] = useState("");
+
+  // Export rows (fetched on demand)
+  const [exporting, setExporting] = useState(false);
+
+  const exportCsv = async () => {
+    if (!token || !summary) return;
+    setExporting(true);
+    try {
+      const fyYear = fy ?? parseInt(summary.fyLabel.replace("FY ", "").split("-")[0]);
+      const client = new ConvexHttpClient(
+        (process.env.NEXT_PUBLIC_CONVEX_URL || "https://terrific-dove-836.convex.cloud").trim(),
+        { skipConvexDeploymentUrlCheck: true }
+      );
+      const data = (await client.query(api.tds.getTdsExportAdmin, { token, fyStartYear: fyYear })) as {
+        lines: any[];
+        grandTotal: number;
+      };
+      if (!data.lines.length) {
+        window.alert("No TDS records for this financial year yet.");
+        return;
+      }
+      const header = [
+        "Request Date", "Withdrawal ID", "Deductee Name", "PAN",
+        "Affiliate Gross", "Affiliate TDS", "Affiliate Section",
+        "Work Gross", "Work TDS", "Work Section", "Total TDS", "Status",
+      ];
+      const rows = data.lines.map((l) => [
+        l.requestDate, l.withdrawalId, l.deducteeName, l.pan,
+        l.affiliateGross, l.affiliateTds, l.affiliateSection,
+        l.workGross, l.workTds, l.workSection, l.totalTds, l.status,
+      ]);
+      const csv = [header, ...rows]
+        .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `zetagrow-tds-${data.lines[0]?.requestDate?.slice(0, 4)}-FY.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      window.alert(err.message || "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const saveRates = async () => {
+    if (!token || !summary) return;
+    const cfg = summary.config;
+    const next = {
+      enabled: true,
+      affiliate: {
+        rate: rateAff !== "" ? Number(rateAff) : cfg.affiliate.rate,
+        threshold: thrAff !== "" ? Number(thrAff) : cfg.affiliate.threshold,
+        label: cfg.affiliate.label,
+      },
+      work: {
+        rate: rateWork !== "" ? Number(rateWork) : cfg.work.rate,
+        threshold: thrWork !== "" ? Number(thrWork) : cfg.work.threshold,
+        label: cfg.work.label,
+      },
+    };
+    if (
+      !window.confirm(
+        `Save TDS config? Affiliate ${next.affiliate.rate}% above ₹${next.affiliate.threshold}, Work ${next.work.rate}% above ₹${next.work.threshold}.`
+      )
+    )
+      return;
+    try {
+      await updateSetting({ token, key: "tds", value: next });
+      setCfgMsg("Saved. Applies to new withdrawal requests immediately.");
+      setRateAff(""); setRateWork(""); setThrAff(""); setThrWork("");
+    } catch (err: any) {
+      setCfgMsg(err.message || "Failed to save");
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header + FY selector + export */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold text-textMain">TDS Register</h3>
+          <p className="text-xs text-textMuted mt-0.5">
+            Tax Deducted at Source on payouts — affiliate commissions (Sec {summary?.config.affiliate.label}) and work earnings (Sec {summary?.config.work.label}).
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={fy ?? ""}
+            onChange={(e) => setFy(e.target.value === "" ? undefined : Number(e.target.value))}
+            className="px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white"
+          >
+            <option value="">{summary?.fyLabel || "Current FY"} (current)</option>
+            {(summary?.fyOptions || []).map((y) => (
+              <option key={y} value={y}>
+                FY {y}-{String((y + 1) % 100).padStart(2, "0")}
+              </option>
+            ))}
+          </select>
+          <button onClick={exportCsv} disabled={exporting} className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 disabled:opacity-50">
+            <Download className="w-3.5 h-3.5" />
+            {exporting ? "Preparing…" : "Export CSV (26Q-ready)"}
+          </button>
+        </div>
+      </div>
+
+      {/* Totals */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatBox label={`Affiliate Gross (${summary.config.affiliate.label})`} value={`₹${summary.totals.affiliateGross.toLocaleString("en-IN")}`} />
+          <StatBox label={`Affiliate TDS @${summary.config.affiliate.rate}%`} value={`₹${summary.totals.affiliateTds.toLocaleString("en-IN")}`} accent />
+          <StatBox label={`Work Gross (${summary.config.work.label})`} value={`₹${summary.totals.workGross.toLocaleString("en-IN")}`} />
+          <StatBox label={`Work TDS @${summary.config.work.rate}%`} value={`₹${summary.totals.workTds.toLocaleString("en-IN")}`} accent />
+        </div>
+      )}
+
+      {/* Per-user table */}
+      <div className="card-surface p-6">
+        {summary === undefined ? (
+          <div className="p-8 text-center animate-pulse"><div className="h-6 bg-neutral-200 rounded w-1/3 mx-auto"></div></div>
+        ) : summary.rows.length === 0 ? (
+          <div className="text-center py-10 text-xs text-textMuted">
+            No TDS records this year — thresholds not crossed by any member yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-borderSubtle text-textMuted bg-neutral-50">
+                  <th className="py-3 px-3 font-semibold">Member</th>
+                  <th className="py-3 px-3 font-semibold">PAN</th>
+                  <th className="py-3 px-3 font-semibold text-right">Affiliate Gross / TDS</th>
+                  <th className="py-3 px-3 font-semibold text-right">Work Gross / TDS</th>
+                  <th className="py-3 px-3 font-semibold text-right">Total TDS</th>
+                  <th className="py-3 px-3 font-semibold text-right">Payouts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.rows.map((r) => (
+                  <tr key={r.userId} className="border-b border-borderSubtle/60 hover:bg-neutral-50/60">
+                    <td className="py-2.5 px-3">
+                      <p className="font-semibold text-textMain">{r.userName}</p>
+                      <p className="text-[10px] text-textMuted">{r.userEmail}</p>
+                    </td>
+                    <td className="py-2.5 px-3 font-mono">{r.panMasked}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      ₹{r.affiliateGross.toLocaleString("en-IN")}
+                      {r.affiliateTds > 0 && <span className="text-brand-700 font-semibold"> / ₹{r.affiliateTds.toLocaleString("en-IN")}</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      ₹{r.workGross.toLocaleString("en-IN")}
+                      {r.workTds > 0 && <span className="text-brand-700 font-semibold"> / ₹{r.workTds.toLocaleString("en-IN")}</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold text-brand-800">₹{r.totalTds.toLocaleString("en-IN")}</td>
+                    <td className="py-2.5 px-3 text-right text-textMuted">{r.count}</td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="border-t-2 border-borderSubtle bg-brand-50/50 font-bold">
+                  <td className="py-2.5 px-3" colSpan={2}>Total</td>
+                  <td className="py-2.5 px-3 text-right">
+                    ₹{summary.totals.affiliateGross.toLocaleString("en-IN")} / ₹{summary.totals.affiliateTds.toLocaleString("en-IN")}
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    ₹{summary.totals.workGross.toLocaleString("en-IN")} / ₹{summary.totals.workTds.toLocaleString("en-IN")}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-brand-800">₹{summary.totals.totalTds.toLocaleString("en-IN")}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Rate configuration */}
+      {summary && (
+        <div className="card-surface p-6 space-y-3">
+          <h4 className="text-sm font-bold text-textMain">TDS Rates &amp; Thresholds</h4>
+          <p className="text-[11px] text-textMuted -mt-1">
+            Defaults follow Income Tax rules (194H: 2% over ₹20K · 194J: 10% over ₹50K). Adjust only on your CA's advice.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <ConfigInput label="Affiliate rate %" placeholder={String(summary.config.affiliate.rate)} value={rateAff} onChange={setRateAff} />
+            <ConfigInput label="Affiliate threshold ₹" placeholder={String(summary.config.affiliate.threshold)} value={thrAff} onChange={setThrAff} />
+            <ConfigInput label="Work rate %" placeholder={String(summary.config.work.rate)} value={rateWork} onChange={setRateWork} />
+            <ConfigInput label="Work threshold ₹" placeholder={String(summary.config.work.threshold)} value={thrWork} onChange={setThrWork} />
+          </div>
+          <button onClick={saveRates} className="btn-primary text-xs py-2 px-4">Save Configuration</button>
+          {cfgMsg && <p className="text-[11px] text-brand-700">{cfgMsg}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatBox({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className={`card-surface p-4 ${accent ? "border-brand-200 bg-brand-50/40" : ""}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-textMuted">{label}</p>
+      <p className={`text-lg font-extrabold mt-1 ${accent ? "text-brand-700" : "text-textMain"}`}>{value}</p>
+    </div>
+  );
+}
+
+function ConfigInput({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white"
+      />
+    </label>
   );
 }

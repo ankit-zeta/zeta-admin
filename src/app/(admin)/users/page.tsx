@@ -26,6 +26,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  UserPlus,
+  Crown,
 } from "lucide-react";
 
 type TabKey = "overview" | "programs" | "affiliate" | "earnings" | "activity";
@@ -204,6 +206,71 @@ export default function AdminUsersPage() {
   const [resetReason, setResetReason] = useState("");
   const [actionMsg, setActionMsg] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // ── Create User (admin) ──
+  const createUserMutation = useMutation(api.users.adminCreateUser);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [cuName, setCuName] = useState("");
+  const [cuEmail, setCuEmail] = useState("");
+  const [cuPassword, setCuPassword] = useState("");
+  const [cuSendEmail, setCuSendEmail] = useState(true);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setIsProcessing(true);
+    setActionMsg("");
+    try {
+      await createUserMutation({
+        token,
+        name: cuName,
+        email: cuEmail,
+        password: cuPassword,
+        sendWelcomeEmail: cuSendEmail,
+      });
+      setActionMsg(`Account created for ${cuEmail}. Share the password privately.`);
+      setCreateUserOpen(false);
+      setCuName(""); setCuEmail(""); setCuPassword(""); setCuSendEmail(true);
+    } catch (err: any) {
+      const msg = err?.name === "ConvexError" && typeof err.data === "string" ? err.data : err.message;
+      setActionMsg(msg || "Failed to create user.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Growth Partner Program access ──
+  const setPartnerAccessMutation = useMutation(api.partners.setPartnerAccess);
+  const partnerDir = useQuery(api.partners.getPartnerDirectoryAdmin, token ? { token } : "skip") as
+    | Array<{ _id: string; tierName: string; chainPct: number; partnerSince: number | null }>
+    | undefined;
+  const isPartner =
+    !!selectedUserId && (partnerDir || []).some((p) => p._id === selectedUserId);
+
+  const handleTogglePartner = async () => {
+    if (!token || !selectedUserId || !userDetails?.user) return;
+    const verb = isPartner ? "REVOKE" : "GRANT";
+    const reason = window.prompt(
+      `${verb === "GRANT" ? "Grant" : "Revoke"} Growth Partner access for ${userDetails.user.name}?\nReason (recorded in audit trail):`,
+      verb === "GRANT" ? "Invited to Growth Partner Program" : "Program access reviewed"
+    );
+    if (!reason) return;
+    setIsProcessing(true);
+    setActionMsg("");
+    try {
+      await setPartnerAccessMutation({ token, userId: selectedUserId, grant: !isPartner, reason });
+      setActionMsg(
+        !isPartner
+          ? `${userDetails.user.name} is now a Growth Partner 🎉 They'll see the exclusive Partnership section in their Affiliate Center.`
+          : "Growth Partner access revoked."
+      );
+    } catch (err: any) {
+      const msg = err?.name === "ConvexError" && typeof err.data === "string" ? err.data : err.message;
+      setActionMsg(msg || "Failed to update partner access.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleStatusToggle = async () => {
     if (!token || !selectedUserId || !userDetails?.user) return;
@@ -397,6 +464,13 @@ export default function AdminUsersPage() {
           >
             <Download className="w-3.5 h-3.5" />
             Export CSV
+          </button>
+          <button
+            onClick={() => setCreateUserOpen(true)}
+            className="btn-primary text-[11px] py-1.5 px-2.5 flex items-center gap-1"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Create User
           </button>
           <span className="text-xs text-textMuted">
             {sortedUsers.length} accounts · page {page}/{totalPages}
@@ -662,13 +736,25 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
                   <button
                     onClick={() => setGrantModalOpen(true)}
                     className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Grant Program Access
+                  </button>
+                  <button
+                    onClick={handleTogglePartner}
+                    disabled={isProcessing}
+                    className={`text-xs py-2 px-4 flex items-center gap-1.5 rounded-lg font-semibold border transition-colors disabled:opacity-50 ${
+                      isPartner
+                        ? "bg-white border-borderSubtle text-textMain hover:bg-neutral-50"
+                        : "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100"
+                    }`}
+                  >
+                    <Crown className={`w-3.5 h-3.5 ${isPartner ? "text-amber-500" : ""}`} />
+                    {isPartner ? "Growth Partner ✓ (Revoke?)" : "Invite as Growth Partner"}
                   </button>
                 </div>
               </div>
@@ -704,9 +790,11 @@ export default function AdminUsersPage() {
                           </p>
                           <p className="text-[10px] text-textMuted">
                             {fmtDate(ep.purchase.createdAt)} ·{" "}
-                            {ep.purchase.paymentMethod === "manual_grant"
-                              ? "Manual Grant"
-                              : ep.purchase.paymentMethod || "—"}{" "}
+                            {ep.purchase.accessType === "admin_grant" || ep.purchase.paymentMethod === "manual_grant"
+                              ? "🎁 Free Giveaway"
+                              : ep.purchase.paymentMethod === "manual_grant"
+                                ? ep.purchase.paymentMethod
+                                : `Sale · ${ep.purchase.paymentMethod || "—"}`}
                             · {ep.purchase.paymentId || ""}
                           </p>
                         </div>
@@ -1392,6 +1480,49 @@ export default function AdminUsersPage() {
                   className="btn-primary text-xs py-1.5 px-3"
                 >
                   {isProcessing ? "Resetting..." : "Confirm Reset"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {createUserOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="card-surface w-full max-w-md space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-textMain flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-brand-600" /> Create User Account
+              </h3>
+              <button onClick={() => setCreateUserOpen(false)} className="text-textMuted hover:text-textMain">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted">Full Name *</span>
+                <input required minLength={2} value={cuName} onChange={(e) => setCuName(e.target.value)} placeholder="e.g. Priya Sharma" className="w-full px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted">Email *</span>
+                <input required type="email" value={cuEmail} onChange={(e) => setCuEmail(e.target.value)} placeholder="person@example.com" className="w-full px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted">Password * (min 8 chars)</span>
+                <input required minLength={8} value={cuPassword} onChange={(e) => setCuPassword(e.target.value)} placeholder="Set a temporary password" className="w-full px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white font-mono" />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-textMain cursor-pointer">
+                <input type="checkbox" checked={cuSendEmail} onChange={(e) => setCuSendEmail(e.target.checked)} className="rounded border-borderSubtle text-brand-600" />
+                Send them a welcome email (password is never emailed — share it privately)
+              </label>
+              <p className="text-[10px] text-textMuted">
+                Account is created active &amp; verified, with wallet and referral code ready. Action is audit-logged.
+              </p>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setCreateUserOpen(false)} className="btn-secondary text-xs py-2 px-3">Cancel</button>
+                <button type="submit" disabled={isProcessing} className="btn-primary text-xs py-2 px-4 disabled:opacity-60">
+                  {isProcessing ? "Creating…" : "Create Account"}
                 </button>
               </div>
             </form>

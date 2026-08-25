@@ -21,7 +21,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Lock
+  Lock,
+  ShieldCheck
 } from "lucide-react";
 
 export default function AdminDashboardLayout({
@@ -55,6 +56,7 @@ export default function AdminDashboardLayout({
   const navItems = [
     { name: "Overview", href: "/", icon: LayoutDashboard },
     { name: "Users Management", href: "/users", icon: Users },
+    { name: "KYC Verification", href: "/kyc", icon: ShieldCheck },
     { name: "Programs & Courses", href: "/programs", icon: BookOpen },{ name: "Plans & Bundles", href: "/plans", icon: Layers },
     { name: "Work Marketplace", href: "/work", icon: Briefcase },
     { name: "Affiliate & Sales", href: "/affiliate", icon: TrendingUp },
