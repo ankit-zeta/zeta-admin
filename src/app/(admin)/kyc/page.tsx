@@ -18,6 +18,11 @@ import {
   Mail,
   Phone,
   RefreshCcw,
+  AlertCircle,
+  Repeat,
+  FileText,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 type QueueItem = {
@@ -209,6 +214,12 @@ export default function AdminKycPage() {
                   <p className="text-xs font-bold text-textMain truncate">
                     {k.userName}
                     <span className="ml-2 font-mono text-[10px] text-textMuted">ID: {k.userId.slice(-8)}</span>
+                    {k.submissionCount > 1 && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold border border-amber-200">
+                        <Repeat className="w-2.5 h-2.5" />
+                        Resubmit #{k.submissionCount}
+                      </span>
+                    )}
                   </p>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-textMuted">
                     <span className="flex items-center gap-1 truncate">
@@ -236,6 +247,14 @@ export default function AdminKycPage() {
                         : "Location not on file"}
                     </span>
                   </div>
+                  {k.status === "rejected" && k.rejectionReason && (
+                    <div className="mt-2 flex items-start gap-1.5 p-2 rounded-md bg-red-50 border border-red-100">
+                      <AlertCircle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-red-700 leading-relaxed line-clamp-2">
+                        {k.rejectionReason}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -251,9 +270,13 @@ export default function AdminKycPage() {
                 </div>
                 <button
                   onClick={() => setSelectedId(selectedId === k._id ? null : k._id)}
-                  className="btn-secondary text-[11px] py-2 px-3 whitespace-nowrap"
+                  className="btn-secondary text-[11px] py-2 px-3 whitespace-nowrap flex items-center gap-1.5"
                 >
-                  {selectedId === k._id ? "Close" : "Review"}
+                  {selectedId === k._id ? (
+                    <><EyeOff className="w-3 h-3" /> Close</>
+                  ) : (
+                    <><Eye className="w-3 h-3" /> Review</>
+                  )}
                 </button>
               </div>
 
@@ -270,24 +293,56 @@ export default function AdminKycPage() {
                         <DetailBlock label="Name as per PAN" value={detail.fullNameAsPerPan} />
                         <DetailBlock label="PAN Number" value={detail.panMasked} mono />
                         <DetailBlock label="Aadhaar (last 4)" value={`•••• ${detail.aadhaarLast4}`} mono />
-                        <DetailBlock label="CV Status" value={detail.cvStatus.toUpperCase()} />
+                        <DetailBlock
+                          label="CV Status"
+                          value={detail.cvStatus === "complete" ? "CV Complete" : detail.cvStatus.toUpperCase()}
+                        />
                         <DetailBlock label="Address" value={[detail.addressLine1, detail.addressLine2].filter(Boolean).join(", ") || "Not collected"} />
                         <DetailBlock label="City / State / PIN" value={[detail.city, detail.state].filter(Boolean).join(", ") + (detail.pincode ? ` — ${detail.pincode}` : "") || "Not collected"} />
                         <DetailBlock label="Wallet Balance" value={`₹${detail.walletBalance.toLocaleString("en-IN")}`} />
                         <DetailBlock label="Lifetime Earnings" value={`₹${detail.totalEarned.toLocaleString("en-IN")}`} />
                       </div>
 
+                      {/* Submission history */}
+                      <div className="flex items-center gap-3 text-[11px] text-textMuted">
+                        <span>
+                          Submitted{" "}
+                          <strong className="text-textMain">
+                            {new Date(detail.submittedAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </strong>
+                        </span>
+                        {detail.submissionCount > 1 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-200">
+                            <Repeat className="w-3 h-3" />
+                            {detail.submissionCount}th submission — resubmitted after rejection
+                          </span>
+                        )}
+                        {detail.reviewedBy && (
+                          <span className="ml-auto flex items-center gap-1">
+                            <RefreshCcw className="w-3 h-3" />
+                            Last reviewed by {detail.reviewedBy}
+                          </span>
+                        )}
+                      </div>
+
                       {detail.status === "rejected" && detail.rejectionReason && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-red-600">Previous rejection reason</p>
-                          <p className="text-xs text-red-700 mt-0.5">{detail.rejectionReason}</p>
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-red-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Rejection reason (sent to member)
+                          </p>
+                          <p className="text-xs text-red-700 leading-relaxed">{detail.rejectionReason}</p>
                         </div>
                       )}
 
                       {/* Document images */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <DocPreview title="PAN Card" url={detail.panImageUrl} />
-                        <DocPreview title="Aadhaar Card" url={detail.aadhaarImageUrl} />
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-textMuted flex items-center gap-1.5">
+                          <FileText className="w-3 h-3 text-brand-600" /> Submitted Documents
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <DocPreview title="PAN Card" url={detail.panImageUrl} />
+                          <DocPreview title="Aadhaar Card" url={detail.aadhaarImageUrl} />
+                        </div>
                       </div>
 
                       {/* Decision buttons */}
@@ -337,7 +392,7 @@ export default function AdminKycPage() {
                         <p className="text-[10px] text-textMuted flex items-center gap-1.5">
                           <RefreshCcw className="w-3 h-3" />
                           Last reviewed by {detail.reviewedBy} on{" "}
-                          {new Date(detail.submittedAt).toLocaleString("en-IN")} · mode: {detail.verificationMode || "manual"}
+                          {detail.reviewedAt ? new Date(detail.reviewedAt).toLocaleString("en-IN") : "—"} · mode: {detail.verificationMode || "manual"}
                         </p>
                       )}
                     </>
