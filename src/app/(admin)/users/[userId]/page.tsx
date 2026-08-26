@@ -38,6 +38,7 @@ import {
   IndianRupee,
   Target,
   Layers,
+  Ban,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -152,6 +153,7 @@ const STATUS_COLORS: Record<string, string> = {
   processing: "bg-blue-100 text-blue-800",
   rejected: "bg-red-100 text-red-800",
   cancelled: "bg-neutral-200 text-neutral-700",
+  revoked: "bg-red-100 text-red-800",
 };
 
 const PIE_COLORS = ["#176B4D", "#D97706", "#2563EB", "#DC2626", "#7C3AED", "#0891B2"];
@@ -253,6 +255,7 @@ export default function UserProfilePage() {
   const adjustWallet = useMutation(api.wallets.adminAdjustWallet);
   const resetPassword = useMutation(api.users.adminResetPassword);
   const updateRole = useMutation(api.users.updateUserRole);
+  const revokeProgramAccess = useMutation(api.users.revokeProgramAccess);
 
   // UI state
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -276,6 +279,10 @@ export default function UserProfilePage() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetPass, setResetPass] = useState("");
   const [resetReason, setResetReason] = useState("");
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revokeProgramId, setRevokeProgramId] = useState("");
+  const [revokeProgramName, setRevokeProgramName] = useState("");
+  const [revokeReason, setRevokeReason] = useState("");
 
   // Date-filtered data
   const rangeStart = useMemo(() => Date.now() - dateRange * 24 * 60 * 60 * 1000, [dateRange]);
@@ -424,6 +431,28 @@ export default function UserProfilePage() {
       setResetOpen(false);
       setResetPass("");
       setResetReason("");
+    } catch (err: any) {
+      setActionMsg(err.message || "Failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!token || !userId || !revokeProgramId || !revokeReason) return;
+    setIsProcessing(true);
+    try {
+      await revokeProgramAccess({
+        token,
+        userId: userId as any,
+        programId: revokeProgramId as any,
+        reason: revokeReason,
+      });
+      setActionMsg(`Access to "${revokeProgramName}" revoked.`);
+      setRevokeOpen(false);
+      setRevokeProgramId("");
+      setRevokeProgramName("");
+      setRevokeReason("");
     } catch (err: any) {
       setActionMsg(err.message || "Failed");
     } finally {
@@ -742,14 +771,30 @@ export default function UserProfilePage() {
                   <div className="space-y-2">
                     {data.enrolledPrograms.map((ep: any, i: number) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-borderSubtle">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-textMain">{ep.program?.name || "Unknown"}</p>
                           <p className="text-[10px] text-textMuted">
                             {ep.purchase?.accessType === "admin_grant" ? "Admin grant" : `Paid ${fmtINR(ep.purchase?.amount)}`}
                             {" · "}{fmtDate(ep.purchase?.createdAt)}
                           </p>
                         </div>
-                        <StatusBadge value={ep.purchase?.status || "unknown"} />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <StatusBadge value={ep.purchase?.status || "unknown"} />
+                          {ep.purchase?.status === "completed" && (
+                            <button
+                              onClick={() => {
+                                setRevokeProgramId(ep.program?._id);
+                                setRevokeProgramName(ep.program?.name || "Unknown");
+                                setRevokeReason("");
+                                setRevokeOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                              title="Revoke access"
+                            >
+                              <Ban size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1194,6 +1239,29 @@ export default function UserProfilePage() {
             className="w-full btn-primary py-2 text-xs disabled:opacity-50"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Reset Password"}
+          </button>
+        </Modal>
+      )}
+
+      {revokeOpen && (
+        <Modal title="Revoke Program Access" onClose={() => setRevokeOpen(false)}>
+          <p className="text-xs text-textMuted mb-1">
+            Revoke <span className="font-bold text-red-600">{revokeProgramName}</span> from this user?
+          </p>
+          <p className="text-[10px] text-textMuted mb-3">Their certificates for this program will also be removed.</p>
+          <textarea
+            rows={2}
+            value={revokeReason}
+            onChange={(e) => setRevokeReason(e.target.value)}
+            placeholder="Reason for revocation..."
+            className="w-full px-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white mb-3"
+          />
+          <button
+            onClick={handleRevoke}
+            disabled={isProcessing || !revokeReason}
+            className="w-full py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 transition-colors"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Revoke Access"}
           </button>
         </Modal>
       )}
