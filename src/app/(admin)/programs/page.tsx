@@ -15,9 +15,20 @@ import {
   Award, 
   ChevronRight, 
   Layers,
-  FileText
+  FileText,
+  Search,
+  ArrowUpDown,
+  X
 } from "lucide-react";
 
+type StatusFilter = "all" | "published" | "draft" | "archived";
+type SortKey =
+  | "manual"
+  | "name"
+  | "price_desc"
+  | "price_asc"
+  | "enrollments"
+  | "newest";
 
 export default function AdminProgramsPage() {
   const { token } = useAdminAuth();
@@ -26,19 +37,86 @@ export default function AdminProgramsPage() {
     token ? { token } : "skip"
   );
 
-  // Programs (sellable bundles) that contain each course — for "Part of" badges.
+  // Programs (sellable bundles) that contain each course �?" for "Part of" badges.
   const plans = useQuery(api.plans.getAllPlansAdmin, token ? { token } : "skip");
   const coursePrograms = new Map<string, string[]>();
+  const coursePlanIds = new Map<string, string[]>();
   for (const p of plans || []) {
     for (const cid of p.programIds || []) {
       const list = coursePrograms.get(cid) || [];
       list.push(p.name);
       coursePrograms.set(cid, list);
+      const ids = coursePlanIds.get(cid) || [];
+      ids.push(p._id);
+      coursePlanIds.set(cid, ids);
     }
   }
 
+  // Search / filter / sort state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [planFilter, setPlanFilter] = useState<string>("all"); // plan _id | "all" | "standalone"
+  const [sortBy, setSortBy] = useState<SortKey>("manual");
+
   const deleteProgramMutation = useMutation(api.programs.deleteProgram);
   const [msg, setMsg] = useState("");
+
+  const visible = React.useMemo(() => {
+    if (!programs) return [];
+    let rows = [...programs];
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      rows = rows.filter(
+        (c) =>
+          c.name?.toLowerCase().includes(q) ||
+          c.shortDescription?.toLowerCase().includes(q) ||
+          c.slug?.toLowerCase().includes(q)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      rows = rows.filter((c) => c.status === statusFilter);
+    }
+
+    if (planFilter === "standalone") {
+      rows = rows.filter((c) => (coursePlanIds.get(c._id)?.length || 0) === 0);
+    } else if (planFilter !== "all") {
+      rows = rows.filter((c) => coursePlanIds.get(c._id)?.includes(planFilter));
+    }
+
+    switch (sortBy) {
+      case "name":
+        rows.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "price_desc":
+        rows.sort((a, b) => b.price - a.price);
+        break;
+      case "price_asc":
+        rows.sort((a, b) => a.price - b.price);
+        break;
+      case "enrollments":
+        rows.sort((a, b) => b.enrollmentsCount - a.enrollmentsCount);
+        break;
+      case "newest":
+        rows.sort((a, b) => b.createdAt - a.createdAt);
+        break;
+      default:
+        rows.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programs, plans, search, statusFilter, planFilter, sortBy]);
+
+  const filtersActive =
+    search.trim() !== "" || statusFilter !== "all" || planFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setPlanFilter("all");
+    setSortBy("manual");
+  };
 
   const handleArchive = async (programId: any, name: string) => {
     if (!token) return;
@@ -81,7 +159,98 @@ export default function AdminProgramsPage() {
         </div>
       )}
 
-      {/* Programs List */}
+      {/* Search / Filter / Sort toolbar */}
+      <div className="card-surface p-4 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-neutral-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search courses by name, description or slug…"
+              className="pl-8 pr-3 py-2 rounded-lg border border-borderSubtle text-xs bg-white w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <select
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+              className="py-2 px-2.5 rounded-lg border border-borderSubtle text-xs bg-white max-w-[220px]"
+              title="Show courses inside a specific Program"
+            >
+              <option value="all">All Programs</option>
+              {(plans || []).map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+              <option value="standalone">Standalone (no Program)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="py-2 px-2.5 rounded-lg border border-borderSubtle text-xs bg-white"
+              title="Sort courses"
+            >
+              <option value="manual">Sort: Manual order</option>
+              <option value="name">Name A → Z</option>
+              <option value="price_desc">Price: High → Low</option>
+              <option value="price_asc">Price: Low → High</option>
+              <option value="enrollments">Most enrolled</option>
+              <option value="newest">Newest first</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex gap-1 flex-wrap">
+            {(
+              [
+                ["all", "All"],
+                ["published", "Published"],
+                ["draft", "Draft"],
+                ["archived", "Archived"],
+              ] as [StatusFilter, string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${
+                  statusFilter === key
+                    ? "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-textMuted border-borderSubtle hover:text-textMain"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-textMuted">
+            <span>
+              Showing{" "}
+              <strong className="text-textMain">{visible.length}</strong> of{" "}
+              {programs?.length ?? 0} courses
+            </span>
+            {filtersActive && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold"
+              >
+                <X className="w-3 h-3" />
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Courses List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {programs === undefined ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -94,8 +263,20 @@ export default function AdminProgramsPage() {
           <div className="col-span-2 card-surface p-12 text-center text-xs text-textMuted">
             No courses created yet. Click &quot;Create New Course&quot; to begin.
           </div>
+        ) : visible.length === 0 ? (
+          <div className="col-span-2 card-surface p-12 text-center space-y-2">
+            <p className="text-xs text-textMuted">
+              No courses match your current search/filters.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="text-xs font-semibold text-brand-700 hover:text-brand-800 underline"
+            >
+              Clear all filters
+            </button>
+          </div>
         ) : (
-          programs.map((prog) => (
+          visible.map((prog) => (
             <div
               key={prog._id}
               className={`card-surface p-6 flex flex-col justify-between space-y-4 ${
