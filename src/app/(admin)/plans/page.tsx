@@ -316,6 +316,7 @@ export default function AdminPlansPage() {
                 <Link
                   href={`/plans/${p.slug}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-[11px] text-textMuted hover:text-brand-700 flex items-center gap-1"
                 >
                   /plans/{p.slug} <ExternalLink className="w-3 h-3" />
