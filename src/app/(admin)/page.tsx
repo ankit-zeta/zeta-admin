@@ -535,7 +535,7 @@ export default function AdminOverviewPage() {
                 icon={Wallet}
                 gradient={k.profitAfterTax >= 0 ? "from-emerald-500 to-emerald-600" : "from-red-500 to-red-600"}
                 iconBg={k.profitAfterTax >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}
-                sub={<>after {data.taxRatePct}% tax on PBT {fmtRs(k.profitBeforeTax)}</>}
+                sub={<>after {data.taxRatePct}% tax on PBT ₹{k.profitBeforeTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
               />
             </div>
           </section>
