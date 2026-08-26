@@ -28,9 +28,37 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
+      // Collect client metadata for login audit
+      let ip = "";
+      let location = "";
+      try {
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        ip = ipData.ip || "";
+        if (ip) {
+          try {
+            const locRes = await fetch(`https://ipapi.co/${ip}/json/`);
+            const locData = await locRes.json();
+            location = [locData.city, locData.region, locData.country_name].filter(Boolean).join(", ");
+          } catch {}
+        }
+      } catch {}
+
+      const ua = navigator.userAgent;
+      const deviceType = /Mobi|Android|iPhone/i.test(ua) ? "mobile" : /iPad|Tablet/i.test(ua) ? "tablet" : "desktop";
+      const deviceOS = /Win/i.test(ua) ? "Windows" : /Mac/i.test(ua) ? "macOS" : /Linux/i.test(ua) ? "Linux" : /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iOS" : "Unknown";
+      const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera|Brave)\/[\d.]+/);
+      const deviceBrowser = browserMatch ? browserMatch[1] : "Unknown";
+
       const res = await loginAction({
         email: email.trim().toLowerCase(),
         password,
+        ip: ip || undefined,
+        userAgent: ua || undefined,
+        deviceType,
+        deviceOS,
+        deviceBrowser,
+        location: location || undefined,
       });
 
       if (!["super_admin", "admin", "content_admin", "finance_admin", "work_admin"].includes(res.user.role)) {
