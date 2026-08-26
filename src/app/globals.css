@@ -47,3 +47,22 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Smooth page transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.space-y-8 > * {
+  animation: fadeIn 0.4s ease-out both;
+}
+.space-y-8 > *:nth-child(2) { animation-delay: 0.05s; }
+.space-y-8 > *:nth-child(3) { animation-delay: 0.1s; }
+.space-y-8 > *:nth-child(4) { animation-delay: 0.15s; }
+.space-y-8 > *:nth-child(5) { animation-delay: 0.2s; }
+
+/* Chart tooltip glass effect */
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.08));
+}
