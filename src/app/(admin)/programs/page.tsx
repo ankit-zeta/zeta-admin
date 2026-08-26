@@ -18,12 +18,24 @@ import {
   FileText
 } from "lucide-react";
 
+
 export default function AdminProgramsPage() {
   const { token } = useAdminAuth();
   const programs = useQuery(
     api.programs.getAllProgramsAdmin,
     token ? { token } : "skip"
   );
+
+  // Programs (sellable bundles) that contain each course — for "Part of" badges.
+  const plans = useQuery(api.plans.getAllPlansAdmin, token ? { token } : "skip");
+  const coursePrograms = new Map<string, string[]>();
+  for (const p of plans || []) {
+    for (const cid of p.programIds || []) {
+      const list = coursePrograms.get(cid) || [];
+      list.push(p.name);
+      coursePrograms.set(cid, list);
+    }
+  }
 
   const deleteProgramMutation = useMutation(api.programs.deleteProgram);
   const [msg, setMsg] = useState("");
@@ -49,16 +61,17 @@ export default function AdminProgramsPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-textMain">
-            Programs & Curriculum Management
+            Courses
           </h1>
           <p className="text-xs text-textMuted">
-            Create and edit curriculum tiers, configure pricing, manage modules and practical video/text lessons.
+            Individual topic courses with modules and lessons. Courses can live
+            standalone or be linked into sellable Programs (see the Programs page).
           </p>
         </div>
 
         <Link href="/programs/new" className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 shadow-sm">
           <Plus className="w-4 h-4" />
-          <span>Create New Program</span>
+          <span>Create New Course</span>
         </Link>
       </div>
 
@@ -79,7 +92,7 @@ export default function AdminProgramsPage() {
           ))
         ) : programs.length === 0 ? (
           <div className="col-span-2 card-surface p-12 text-center text-xs text-textMuted">
-            No programs created yet. Click &quot;Create New Program&quot; to begin.
+            No courses created yet. Click &quot;Create New Course&quot; to begin.
           </div>
         ) : (
           programs.map((prog) => (
@@ -103,6 +116,30 @@ export default function AdminProgramsPage() {
                 <p className="text-xs text-textMuted leading-relaxed line-clamp-2">
                   {prog.shortDescription}
                 </p>
+
+                {/* Program membership */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(coursePrograms.get(prog._id)?.length || 0) > 0 ? (
+                    <>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted">
+                        Part of:
+                      </span>
+                      {coursePrograms.get(prog._id)!.map((name) => (
+                        <span
+                          key={name}
+                          className="text-[10px] font-bold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full"
+                        >
+                          <Layers className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                          {name}
+                        </span>
+                      ))}
+                    </>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-neutral-500 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-full">
+                      Standalone course
+                    </span>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-textMuted pt-2 border-t border-borderSubtle">
                   <span>Modules: <strong className="text-textMain">{prog.moduleCount}</strong></span>

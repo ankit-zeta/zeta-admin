@@ -124,8 +124,8 @@ export default function AdminAffiliatePage() {
         status,
         reason,
       });
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // List re-syncs from the server — stay quiet, no internals in console.
     }
   };
 

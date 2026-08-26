@@ -620,8 +620,8 @@ function ContactInquiriesTable() {
     if (!token) return;
     try {
       await updateInquiryStatusMutation({ token, inquiryId: id, status: "resolved" });
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // List re-syncs from the server — stay quiet, no internals in console.
     }
   };
 
